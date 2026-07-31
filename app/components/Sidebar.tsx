@@ -27,7 +27,6 @@ export default function Sidebar() {
         <div className="text-xl font-bold text-white">🎵 NOX Admin</div>
         <div className="text-xs text-gray-500 mt-1">Music Panel</div>
       </div>
-
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => (
           <Link
@@ -44,7 +43,6 @@ export default function Sidebar() {
           </Link>
         ))}
       </nav>
-
       <div className="p-3 border-t border-gray-800">
         <button
           onClick={handleLogout}
