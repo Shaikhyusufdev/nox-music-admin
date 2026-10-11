@@ -34,6 +34,27 @@ function extractOkruId(input: string): string | null {
   return m ? m[1] : null
 }
 
+// Image ko 600px tak chhota karke JPEG banata hai (~60-100KB)
+async function compressImage(file: File, maxSize = 600): Promise<Blob> {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height))
+  const w = Math.round(bitmap.width * scale)
+  const h = Math.round(bitmap.height * scale)
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas support nahi hai')
+  ctx.drawImage(bitmap, 0, 0, w, h)
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('Compress nahi hua'))),
+      'image/jpeg',
+      0.85
+    )
+  )
+}
+
 export default function SongsPage() {
   const [songs, setSongs] = useState<Song[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -41,6 +62,26 @@ export default function SongsPage() {
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(emptyForm)
+  const [uploadingImg, setUploadingImg] = useState(false)
+
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImg(true)
+    try {
+      const blob = await compressImage(file)
+      const fd = new FormData()
+      fd.append('file', blob, 'cover.jpg')
+      const res = await fetch('/api/upload-image', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok || !data.url) throw new Error(data.error || 'Upload fail')
+      setForm((f) => ({ ...f, thumbnail_url: data.url }))
+    } catch (err: any) {
+      alert('Cover upload nahi hua: ' + err.message)
+    }
+    setUploadingImg(false)
+    e.target.value = ''
+  }
 
   useEffect(() => {
     fetchSongs()
@@ -226,11 +267,28 @@ export default function SongsPage() {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="text-sm text-gray-400 mb-1 block">Thumbnail URL (optional)</label>
+                  <label className="text-sm text-gray-400 mb-1 block">Cover Image (optional)</label>
+                  <div className="flex items-center gap-3 mb-2">
+                    {form.thumbnail_url && (
+                      <img
+                        src={form.thumbnail_url}
+                        alt="cover"
+                        className="w-16 h-16 rounded-lg object-cover border border-gray-700"
+                      />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImagePick}
+                      disabled={uploadingImg}
+                      className="text-sm text-gray-400 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-purple-600 file:text-white file:text-sm"
+                    />
+                    {uploadingImg && <span className="text-xs text-purple-400">Uploading...</span>}
+                  </div>
                   <input
                     value={form.thumbnail_url}
                     onChange={(e) => setForm({ ...form, thumbnail_url: e.target.value })}
-                    placeholder="https://... (khali chhodo to app khud dhundh legi)"
+                    placeholder="ya URL yahan paste karo (khali chhodo to app khud dhundh legi)"
                     className={inputCls}
                   />
                 </div>
@@ -239,7 +297,7 @@ export default function SongsPage() {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploadingImg}
                   className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : editingId ? 'Update Song' : 'Add Song'}
