@@ -6,11 +6,11 @@ const hmac = (key: crypto.BinaryLike, d: string) =>
   crypto.createHmac('sha256', key).update(d).digest()
 
 export async function putObject(key: string, body: Buffer, contentType: string) {
-  const endpoint = process.env.S3_ENDPOINT!
-  const region = process.env.S3_REGION!
-  const bucket = process.env.S3_BUCKET!
-  const accessKey = process.env.S3_ACCESS_KEY!
-  const secretKey = process.env.S3_SECRET_KEY!
+    const endpoint = (process.env.S3_ENDPOINT || '').trim().replace(/^https?:\/\//, '').replace(/\/+$/, '')
+  const region = (process.env.S3_REGION || '').trim()
+  const bucket = (process.env.S3_BUCKET || '').trim()
+  const accessKey = (process.env.S3_ACCESS_KEY || '').trim()
+  const secretKey = (process.env.S3_SECRET_KEY || '').trim()
   if (!endpoint || !region || !bucket || !accessKey || !secretKey) {
     throw new Error('S3 env variables set nahi hain')
   }
