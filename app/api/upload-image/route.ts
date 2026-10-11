@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image 3MB se badi hai' }, { status: 400 })
 
     const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
-    const folder = process.env.S3_FOLDER || 'NOXMUSIC'
+    const folder = (process.env.S3_FOLDER || '').trim().replace(/^\/+|\/+$/g, '') || 'NOXMUSIC'
     const key = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
 
     const url = await putObject(key, Buffer.from(await file.arrayBuffer()), file.type)
